@@ -1,0 +1,55 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pre-sync
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pre-sync
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["create", "update", "get", "list", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pre-sync
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+subjects:
+  - kind: ServiceAccount
+    name: pre-sync
+roleRef:
+  kind: Role
+  name: pre-sync
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pre-sync
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  template:
+    spec:
+      serviceAccountName: pre-sync
+      containers:
+        - name: create-configmap
+          image: bitnami/kubectl:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              export TZ=Europe/Paris
+              SUFFIX=$(date +%Y%m%d-%H%M%S)
+              kubectl create configmap pre-sync-{{ .Values.run }}-$SUFFIX --from-literal=foo=bar --dry-run=client -o yaml | kubectl apply -f -
+      restartPolicy: OnFailure
