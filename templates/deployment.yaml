@@ -27,7 +27,7 @@ spec:
                 - -c
                 - |
                   if [ ! -f /tmp/ready ]; then
-                    sleep 60 && touch /tmp/ready &
+                    sleep 20 && touch /tmp/ready &
                     exit 1
                   else
                     exit 0
